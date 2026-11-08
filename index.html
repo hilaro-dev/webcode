@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>webcode — Responsive Browser-Based Python IDE &amp; Visual Sandbox</title>
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            webcode: {
+              bg: '#0d1117',
+              panel: '#161b22',
+              card: '#1c2128',
+              border: '#30363d',
+              accent: '#10b981',
+              accentHover: '#059669'
+            }
+          },
+          fontFamily: {
+            sans: ['Inter', 'system-ui', 'sans-serif'],
+            mono: ['JetBrains Mono', 'Fira Code', 'monospace']
+          }
+        }
+      }
+    };
+  </script>
+
+  <!-- CodeMirror 5 Editor & Python Addons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/python/python.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/selection/active-line.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/matchbrackets.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/closebrackets.min.js"></script>
+
+  <!-- Pyodide v0.26.2 WebAssembly Python Runtime -->
+  <script src="https://cdn.jsdelivr.net/pyodide/v0.26.2/full/pyodide.js"></script>
+
+  <!-- Custom Styles -->
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body class="bg-[#0d1117] text-[#e6edf3] min-h-screen flex flex-col selection:bg-emerald-500/30 selection:text-emerald-200">
+
+  <!-- ===================================================================== -->
+  <!-- STICKY TOP NAVIGATION BAR ("webcode" Branding & Primary Controls)    -->
+  <!-- ===================================================================== -->
+  <header class="sticky top-0 z-40 bg-[#0d1117]/95 backdrop-blur border-b border-[#30363d] px-3 sm:px-5 py-2.5">
+    <div class="max-w-[1920px] mx-auto flex flex-wrap items-center justify-between gap-2.5">
+
+      <!-- Left: Sidebar Toggle, Brand Logo & Runtime Status Badge -->
+      <div class="flex items-center gap-2.5 sm:gap-3">
+        <!-- Desktop Collapsible Sidebar Button -->
+        <button id="toggle-sidebar-btn" type="button"
+          class="hidden lg:inline-flex items-center justify-center w-8 h-8 rounded-lg bg-[#161b22] hover:bg-[#1c2128] border border-[#30363d] text-slate-300 hover:text-emerald-400 transition"
+          title="Toggle Libraries Drawer">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h10M4 18h16" />
+          </svg>
+        </button>
+
+        <!-- Brand Logo -->
+        <div class="flex items-center gap-2">
+          <div class="w-8 h-8 rounded-lg bg-emerald-500/15 border border-emerald-500/40 flex items-center justify-center shadow-inner">
+            <span class="font-mono font-bold text-emerald-400 text-sm tracking-tighter">&gt;_</span>
+          </div>
+          <div>
+            <div class="flex items-center gap-1.5">
+              <span class="font-bold text-base sm:text-lg tracking-tight text-white">web<span class="text-emerald-400">code</span></span>
+              <span class="hidden sm:inline-block text-[10px] font-mono uppercase px-1.5 py-0.5 rounded bg-[#161b22] text-slate-400 border border-[#30363d]">
+                Pyodide 0.26.2
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Execution Status Indicator Badge -->
+        <div id="runtime-status-badge"
+          class="inline-flex items-center gap-2 px-2.5 py-1 rounded-full text-xs font-medium border bg-amber-500/10 text-amber-300 border-amber-500/30 transition">
+          <span id="runtime-status-dot" class="w-2 h-2 rounded-full bg-amber-400 status-pulse"></span>
+          <span id="runtime-status-text">Loading Python Engine...</span>
+        </div>
+      </div>
+
+      <!-- Right: Template Switcher, "Load Visual Demo", Run, Reset & Clear -->
+      <div class="flex items-center flex-wrap gap-1.5 sm:gap-2">
+        <!-- Starter & Visual Template Selector -->
+        <select id="template-selector"
+          aria-label="Select Code Template"
+          class="hidden md:block bg-[#161b22] hover:bg-[#1c2128] text-xs text-slate-200 border border-[#30363d] rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-emerald-500 transition">
+          <option value="starter">Template: Starter (Console + Plot)</option>
+          <option value="visual_demo">Template: Sine Wave &amp; Phase Spectrum</option>
+          <option value="html_interactive">Template: Interactive HTML / SVG Widget</option>
+          <option value="canvas_turtle">Template: HTML5 Canvas 2D Spirograph</option>
+          <option value="pil_imaging">Template: Pillow (PIL) Fractal Image</option>
+        </select>
+
+        <!-- Pre-Configured One-Click "Load Visual Demo" Button -->
+        <button id="load-visual-demo-btn" type="button"
+          class="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/40 transition shadow-sm"
+          title="Installs matplotlib & numpy and renders a sample sine wave chart into the Visual Output Screen">
+          <svg class="w-3.5 h-3.5 text-emerald-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" />
+          </svg>
+          <span>Load Visual Demo</span>
+        </button>
+
+        <!-- Prominent Run Code Button (Ctrl+Enter / Cmd+Enter) -->
+        <button id="run-code-btn" type="button" disabled
+          class="inline-flex items-center gap-1.5 px-3.5 sm:px-4 py-1.5 rounded-lg text-xs sm:text-sm font-semibold bg-[#10b981] hover:bg-[#059669] text-slate-950 shadow-md shadow-emerald-950/50 transition opacity-60"
+          title="Execute Python Script (Ctrl+Enter / Cmd+Enter)">
+          <svg class="w-4 h-4 fill-current" viewBox="0 0 20 20">
+            <path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z" />
+          </svg>
+          <span>Run Code</span>
+          <kbd class="hidden xl:inline-block ml-1 px-1.5 py-0.5 text-[10px] font-mono bg-slate-950/25 text-slate-950 rounded">
+            Ctrl+↵
+          </kbd>
+        </button>
+
+        <!-- Stop / Reset Runtime Button -->
+        <button id="reset-runtime-btn" type="button"
+          class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium bg-[#161b22] hover:bg-rose-500/15 text-slate-300 hover:text-rose-300 border border-[#30363d] hover:border-rose-500/40 transition"
+          title="Stop / Reset Python Runtime Namespace & Figures">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+          </svg>
+          <span class="hidden sm:inline">Reset</span>
+        </button>
+
+        <!-- Clear Output Button -->
+        <button id="clear-output-btn" type="button"
+          class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium bg-[#161b22] hover:bg-[#1c2128] text-slate-300 hover:text-white border border-[#30363d] transition"
+          title="Clear Terminal Console & Visual Output">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+          </svg>
+          <span class="hidden sm:inline">Clear Output</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Mobile & Tablet View Switcher Bar (Visible on <1024px screens) -->
+    <div class="lg:hidden mt-2 pt-2 border-t border-[#30363d]/70 flex items-center justify-between gap-2 overflow-x-auto mobile-key-bar">
+      <div class="flex items-center gap-1">
+        <button type="button" data-mobile-tab="all"
+          class="px-3 py-1.5 text-xs font-semibold rounded-md bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 whitespace-nowrap transition">
+          Vertical Flow
+        </button>
+        <button type="button" data-mobile-tab="editor"
+          class="px-3 py-1.5 text-xs font-medium rounded-md text-slate-400 hover:text-slate-200 whitespace-nowrap transition">
+          Editor
+        </button>
+        <button type="button" data-mobile-tab="libraries"
+          class="px-3 py-1.5 text-xs font-medium rounded-md text-slate-400 hover:text-slate-200 whitespace-nowrap transition flex items-center gap-1">
+          <span>Libraries</span>
+          <span id="mobile-pkg-count-badge" class="px-1.5 py-0.2 text-[10px] rounded-full bg-slate-800 text-emerald-400">1</span>
+        </button>
+        <button type="button" data-mobile-tab="console"
+          class="px-3 py-1.5 text-xs font-medium rounded-md text-slate-400 hover:text-slate-200 whitespace-nowrap transition">
+          Console
+        </button>
+        <button type="button" data-mobile-tab="visual"
+          class="px-3 py-1.5 text-xs font-medium rounded-md text-slate-400 hover:text-slate-200 whitespace-nowrap transition">
+          Visual Screen
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ===================================================================== -->
+  <!-- MAIN WORKSPACE GRID (Desktop Split-Pane / Mobile Vertical Flow)      -->
+  <!-- ===================================================================== -->
+  <main class="flex-1 max-w-[1920px] w-full mx-auto flex flex-col lg:flex-row overflow-x-hidden">
+
+    <!-- =================================================================== -->
+    <!-- LEFT SIDEBAR: DYNAMIC LIBRARY & PACKAGE MANAGER DRAWER             -->
+    <!-- =================================================================== -->
+    <aside id="libraries-sidebar"
+      class="w-full lg:w-80 xl:w-88 shrink-0 bg-[#0d1117] border-b lg:border-b-0 lg:border-r border-[#30363d] flex flex-col">
+
+      <!-- Drawer Header -->
+      <div class="px-4 py-3 bg-[#161b22] border-b border-[#30363d] flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+          </svg>
+          <h2 class="text-xs font-semibold uppercase tracking-wider text-slate-200">Libraries &amp; Packages</h2>
+        </div>
+        <span id="pkg-count-badge"
+          class="px-2 py-0.5 text-[11px] font-mono font-semibold rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+          1
+        </span>
+      </div>
+
+      <div class="p-4 space-y-5 overflow-y-auto flex-1">
+        <!-- 1. PyPI / micropip Package Search & Install -->
+        <div>
+          <label for="pkg-search-input" class="block text-xs font-medium text-slate-300 mb-1.5">
+            PyPI / Pyodide Package Install (<code class="text-emerald-400">micropip</code>)
+          </label>
+          <div class="flex gap-1.5">
+            <input id="pkg-search-input" type="text"
+              placeholder="e.g. matplotlib, numpy, scipy..."
+              class="flex-1 min-w-0 bg-[#161b22] text-xs text-white placeholder-slate-500 border border-[#30363d] rounded-lg px-3 py-2 focus:outline-none focus:border-emerald-500 font-mono" />
+            <button id="pkg-install-btn" type="button"
+              class="px-3.5 py-2 rounded-lg text-xs font-semibold bg-[#10b981] hover:bg-[#059669] text-slate-950 transition shrink-0">
+              Install
+            </button>
+          </div>
+
+          <!-- Quick-Install Popular Packages -->
+          <div class="mt-2.5">
+            <span class="block text-[11px] text-slate-400 mb-1.5">Quick Install Popular Libraries:</span>
+            <div class="flex flex-wrap gap-1.5">
+              <button type="button" data-quick-pkg="numpy"
+                class="px-2 py-1 text-[11px] font-mono rounded bg-[#161b22] hover:bg-emerald-500/15 text-slate-300 hover:text-emerald-300 border border-[#30363d] hover:border-emerald-500/40 transition">
+                + numpy
+              </button>
+              <button type="button" data-quick-pkg="matplotlib"
+                class="px-2 py-1 text-[11px] font-mono rounded bg-[#161b22] hover:bg-emerald-500/15 text-slate-300 hover:text-emerald-300 border border-[#30363d] hover:border-emerald-500/40 transition">
+                + matplotlib
+              </button>
+              <button type="button" data-quick-pkg="pandas"
+                class="px-2 py-1 text-[11px] font-mono rounded bg-[#161b22] hover:bg-emerald-500/15 text-slate-300 hover:text-emerald-300 border border-[#30363d] hover:border-emerald-500/40 transition">
+                + pandas
+              </button>
+              <button type="button" data-quick-pkg="scipy"
+                class="px-2 py-1 text-[11px] font-mono rounded bg-[#161b22] hover:bg-emerald-500/15 text-slate-300 hover:text-emerald-300 border border-[#30363d] hover:border-emerald-500/40 transition">
+                + scipy
+              </button>
+              <button type="button" data-quick-pkg="pillow"
+                class="px-2 py-1 text-[11px] font-mono rounded bg-[#161b22] hover:bg-emerald-500/15 text-slate-300 hover:text-emerald-300 border border-[#30363d] hover:border-emerald-500/40 transition">
+                + pillow
+              </button>
+              <button type="button" data-quick-pkg="sympy"
+                class="px-2 py-1 text-[11px] font-mono rounded bg-[#161b22] hover:bg-emerald-500/15 text-slate-300 hover:text-emerald-300 border border-[#30363d] hover:border-emerald-500/40 transition">
+                + sympy
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 2. Installed Packages List (Removable Badges) -->
+        <div>
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-xs font-medium text-slate-300">Active / Installed Libraries</span>
+            <span class="text-[10px] text-slate-500">Click &times; to unload</span>
+          </div>
+          <div id="installed-packages-list" class="flex flex-wrap gap-1.5">
+            <!-- Dynamically populated package badges -->
+          </div>
+        </div>
+
+        <!-- 3. Custom Library Upload (.whl, .py, .zip into pyodide.FS) -->
+        <div class="pt-3 border-t border-[#30363d]">
+          <div class="flex items-center justify-between mb-1.5">
+            <label class="text-xs font-medium text-slate-300">
+              Custom Library Upload (<code class="text-sky-400">pyodide.FS</code>)
+            </label>
+            <button id="create-sample-module-btn" type="button"
+              class="text-[11px] text-emerald-400 hover:text-emerald-300 underline decoration-dotted"
+              title="Generate and mount a demo custom Python module in pyodide.FS">
+              + Demo Module
+            </button>
+          </div>
+          <p class="text-[11px] text-slate-400 mb-2">
+            Upload local <code class="text-slate-200">.whl</code> wheels, <code class="text-slate-200">.py</code> modules, or <code class="text-slate-200">.zip</code> packages to import immediately.
+          </p>
+
+          <div id="custom-pkg-dropzone"
+            class="border-2 border-dashed border-[#30363d] hover:border-emerald-500/60 rounded-lg p-3.5 text-center cursor-pointer bg-[#161b22]/60 hover:bg-[#161b22] transition">
+            <input id="custom-pkg-file-input" type="file" multiple accept=".whl,.py,.zip,.csv,.json,.txt" class="hidden" />
+            <svg class="w-6 h-6 mx-auto text-emerald-400 mb-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+            </svg>
+            <div class="text-xs font-medium text-slate-200">Drop <span class="text-emerald-400">.whl</span>, <span class="text-emerald-400">.py</span>, or <span class="text-emerald-400">.zip</span> here</div>
+            <div class="text-[11px] text-slate-400 mt-0.5">or click to browse device files</div>
+          </div>
+
+          <!-- Uploaded Virtual FS Modules List -->
+          <div class="mt-3">
+            <span class="block text-[11px] font-medium text-slate-400 mb-1.5">Mounted in <code class="text-slate-300">/home/pyodide</code>:</span>
+            <div id="custom-files-list" class="space-y-1.5"></div>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- =================================================================== -->
+    <!-- CENTER / LEFT PANEL: PYTHON CODE EDITOR & MOBILE HELPER TOOLBAR    -->
+    <!-- =================================================================== -->
+    <section id="editor-pane"
+      class="w-full lg:w-1/2 xl:w-[52%] flex flex-col border-b lg:border-b-0 lg:border-r border-[#30363d] bg-[#0d1117]">
+
+      <!-- Editor Header Bar -->
+      <div class="px-3.5 py-2 bg-[#161b22] border-b border-[#30363d] flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <div class="flex items-center gap-1.5 px-2.5 py-1 rounded bg-[#0d1117] border border-[#30363d] text-xs font-mono text-emerald-400">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+            </svg>
+            <span>main.py</span>
+          </div>
+          <span class="text-[11px] text-slate-400 hidden sm:inline">UTF-8 • Python 3.12</span>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <!-- Mobile Template Dropdown -->
+          <select onchange="if(this.value){window.editorController.setValue(window.WEBCODE_TEMPLATES[this.value].code);}"
+            aria-label="Mobile Template Selector"
+            class="md:hidden bg-[#0d1117] text-[11px] text-slate-300 border border-[#30363d] rounded px-2 py-1">
+            <option value="starter">Starter Plot</option>
+            <option value="visual_demo">Sine Demo</option>
+            <option value="html_interactive">HTML/SVG</option>
+            <option value="canvas_turtle">Canvas 2D</option>
+            <option value="pil_imaging">PIL Image</option>
+          </select>
+
+          <button id="download-py-btn" type="button"
+            class="px-2.5 py-1 rounded text-xs text-slate-300 hover:text-white bg-[#0d1117] hover:bg-[#1c2128] border border-[#30363d] transition flex items-center gap-1"
+            title="Download Python Script (.py)">
+            <svg class="w-3.5 h-3.5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5m0 0l5-5m-5 5V4" />
+            </svg>
+            <span>Save .py</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- CodeMirror Container -->
+      <div class="relative flex-1 min-h-[340px] sm:min-h-[420px] lg:min-h-[540px]">
+        <textarea id="python-editor-textarea" class="hidden w-full h-full bg-[#0d1117] text-slate-100 font-mono p-4 text-sm focus:outline-none" spellcheck="false"></textarea>
+      </div>
+
+      <!-- Quick-Access Mobile & Tablet Helper Toolbar (Ergonomic Touch Coding) -->
+      <div class="bg-[#161b22] border-t border-[#30363d] px-2 py-1.5 flex items-center gap-1 overflow-x-auto mobile-key-bar">
+        <span class="text-[10px] font-mono uppercase tracking-wider text-slate-500 px-1.5 shrink-0 hidden sm:inline">Quick Keys</span>
+        <button type="button" data-insert-token="TAB"
+          class="px-2.5 py-1 rounded bg-[#0d1117] hover:bg-emerald-500/20 active:bg-emerald-500/30 text-xs font-mono text-emerald-400 border border-[#30363d] shrink-0">
+          Tab
+        </button>
+        <button type="button" data-insert-token="("
+          class="px-2.5 py-1 rounded bg-[#0d1117] hover:bg-slate-800 active:bg-emerald-500/20 text-xs font-mono text-slate-200 border border-[#30363d] shrink-0">
+          (
+        </button>
+        <button type="button" data-insert-token=")"
+          class="px-2.5 py-1 rounded bg-[#0d1117] hover:bg-slate-800 active:bg-emerald-500/20 text-xs font-mono text-slate-200 border border-[#30363d] shrink-0">
+          )
+        </button>
+        <button type="button" data-insert-token=":"
+          class="px-2.5 py-1 rounded bg-[#0d1117] hover:bg-slate-800 active:bg-emerald-500/20 text-xs font-mono text-slate-200 border border-[#30363d] shrink-0">
+          :
+        </button>
+        <button type="button" data-insert-token='"'
+          class="px-2.5 py-1 rounded bg-[#0d1117] hover:bg-slate-800 active:bg-emerald-500/20 text-xs font-mono text-slate-200 border border-[#30363d] shrink-0">
+          "
+        </button>
+        <button type="button" data-insert-token="'"
+          class="px-2.5 py-1 rounded bg-[#0d1117] hover:bg-slate-800 active:bg-emerald-500/20 text-xs font-mono text-slate-200 border border-[#30363d] shrink-0">
+          '
+        </button>
+        <button type="button" data-insert-token="="
+          class="px-2.5 py-1 rounded bg-[#0d1117] hover:bg-slate-800 active:bg-emerald-500/20 text-xs font-mono text-slate-200 border border-[#30363d] shrink-0">
+          =
+        </button>
+        <button type="button" data-insert-token="#"
+          class="px-2.5 py-1 rounded bg-[#0d1117] hover:bg-slate-800 active:bg-emerald-500/20 text-xs font-mono text-slate-200 border border-[#30363d] shrink-0">
+          #
+        </button>
+        <button type="button" data-insert-token="["
+          class="px-2.5 py-1 rounded bg-[#0d1117] hover:bg-slate-800 active:bg-emerald-500/20 text-xs font-mono text-slate-200 border border-[#30363d] shrink-0">
+          [
+        </button>
+        <button type="button" data-insert-token="]"
+          class="px-2.5 py-1 rounded bg-[#0d1117] hover:bg-slate-800 active:bg-emerald-500/20 text-xs font-mono text-slate-200 border border-[#30363d] shrink-0">
+          ]
+        </button>
+        <button type="button" id="mobile-key-undo"
+          class="px-2.5 py-1 rounded bg-[#0d1117] hover:bg-slate-800 text-xs font-mono text-slate-300 border border-[#30363d] shrink-0"
+          title="Undo">
+          ↶ Undo
+        </button>
+        <button type="button" id="mobile-key-redo"
+          class="px-2.5 py-1 rounded bg-[#0d1117] hover:bg-slate-800 text-xs font-mono text-slate-300 border border-[#30363d] shrink-0"
+          title="Redo">
+          ↷ Redo
+        </button>
+
+        <div class="ml-auto pl-2 text-[11px] font-mono text-slate-400 shrink-0" id="editor-cursor-status">
+          Ln 1, Col 1
+        </div>
+      </div>
+    </section>
+
+    <!-- =================================================================== -->
+    <!-- RIGHT / BOTTOM STACKED PANEL: CONSOLE + VISUAL OUTPUT SCREEN       -->
+    <!-- =================================================================== -->
+    <section class="w-full lg:flex-1 flex flex-col bg-[#0d1117]">
+
+      <!-- 1. TERMINAL CONSOLE (stdout / stderr) -->
+      <div id="console-pane" class="flex flex-col border-b border-[#30363d] min-h-[210px] max-h-[340px] lg:max-h-[310px]">
+        <div class="px-4 py-2 bg-[#161b22] border-b border-[#30363d] flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+            <h3 class="text-xs font-semibold uppercase tracking-wider text-slate-200">Terminal Console</h3>
+            <span class="text-[11px] font-mono text-slate-500">stdout / stderr</span>
+            <span id="exec-time-badge"
+              class="hidden px-2 py-0.5 text-[10px] font-mono rounded bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+              0.0 ms
+            </span>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <button id="copy-console-btn" type="button"
+              class="px-2 py-0.5 text-[11px] text-slate-400 hover:text-slate-200 bg-[#0d1117] rounded border border-[#30363d] transition">
+              Copy
+            </button>
+            <button id="clear-console-only-btn" type="button"
+              class="px-2 py-0.5 text-[11px] text-slate-400 hover:text-slate-200 bg-[#0d1117] rounded border border-[#30363d] transition">
+              Clear
+            </button>
+          </div>
+        </div>
+
+        <div id="console-output"
+          class="flex-1 p-3.5 overflow-y-auto bg-[#0d1117] font-mono text-xs space-y-1">
+          <!-- Real-time stdout and stderr lines render here -->
+        </div>
+      </div>
+
+      <!-- 2. AUTOMATIC VISUAL OUTPUT SCREEN -->
+      <div id="visual-output-section" class="flex-1 flex flex-col bg-[#0d1117]">
+        <!-- Visual Output Header -->
+        <div id="visual-header-toggle"
+          class="px-4 py-2.5 bg-[#161b22] border-b border-[#30363d] flex items-center justify-between cursor-pointer select-none">
+          <div class="flex items-center gap-2">
+            <svg id="visual-collapse-icon" class="w-4 h-4 text-emerald-400 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+            </svg>
+            <h3 class="text-xs font-semibold uppercase tracking-wider text-slate-200">Visual Output Screen</h3>
+            <span id="visual-count-badge"
+              class="px-2 py-0.5 text-[11px] font-medium rounded-full bg-slate-800 text-slate-400 border border-slate-700">
+              Idle
+            </span>
+          </div>
+          <div class="flex items-center gap-2 text-[11px] text-slate-400">
+            <span class="hidden sm:inline">Matplotlib • PIL • HTML/SVG • Canvas 2D</span>
+          </div>
+        </div>
+
+        <!-- Visual Output Body -->
+        <div id="visual-panel-body" class="p-4 flex-1 overflow-y-auto space-y-4">
+
+          <!-- Subtle Empty State when no visual output is generated -->
+          <div id="visual-empty-state"
+            class="border border-dashed border-[#30363d] rounded-xl p-6 text-center bg-[#161b22]/30">
+            <div class="w-10 h-10 rounded-full bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center mx-auto mb-2.5 text-emerald-400">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+            </div>
+            <p class="text-xs font-medium text-slate-300">No visual output generated in this run</p>
+            <p class="text-[11px] text-slate-500 mt-1 max-w-md mx-auto">
+              Run a script calling <code class="text-emerald-400">plt.show()</code>, <code class="text-emerald-400">img.show()</code>, <code class="text-emerald-400">display_html()</code>, or click <strong class="text-emerald-400">Load Visual Demo</strong> in the top bar.
+            </p>
+          </div>
+
+          <!-- Hook 1: Matplotlib / Seaborn / PIL Image Gallery -->
+          <div id="visual-gallery" class="hidden space-y-4"></div>
+
+          <!-- Hook 2: Sandboxed Interactive HTML / SVG Container (#visual-output-root) -->
+          <div id="visual-output-root" class="hidden space-y-3"></div>
+
+          <!-- Hook 3: Dedicated HTML5 Canvas (<canvas id="canvas">) for 2D / SDL / Pygame-CE / Turtle -->
+          <div id="canvas-output-card"
+            class="hidden visual-card bg-[#161b22] border border-[#30363d] rounded-lg overflow-hidden">
+            <div class="flex items-center justify-between px-3 py-2 bg-[#0d1117]/70 border-b border-[#30363d]">
+              <div class="flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full bg-purple-400"></span>
+                <span id="canvas-card-title" class="text-xs font-semibold text-slate-200">HTML5 Canvas 2D Surface</span>
+                <code class="text-[11px] text-purple-400 font-mono">#canvas</code>
+              </div>
+              <div class="flex items-center gap-1.5">
+                <button id="canvas-zoom-btn" type="button"
+                  class="px-2 py-1 text-xs text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 rounded border border-slate-700 transition">
+                  Zoom
+                </button>
+                <button id="canvas-download-btn" type="button"
+                  class="px-2 py-1 text-xs text-emerald-400 hover:text-emerald-300 bg-emerald-500/10 hover:bg-emerald-500/20 rounded border border-emerald-500/30 transition">
+                  PNG
+                </button>
+              </div>
+            </div>
+            <div class="p-3 flex items-center justify-center bg-[#0d1117]/50 overflow-x-auto">
+              <canvas id="canvas" width="640" height="360"
+                class="max-w-full h-auto rounded border border-[#30363d] bg-[#0d1117]"></canvas>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- ===================================================================== -->
+  <!-- LIGHTBOX MODAL FOR ZOOMING & DOWNLOADING VISUAL FIGURES              -->
+  <!-- ===================================================================== -->
+  <div id="image-lightbox-modal"
+    class="hidden fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-[#161b22] border border-[#30363d] rounded-xl max-w-5xl w-full overflow-hidden shadow-2xl">
+      <div class="flex items-center justify-between px-4 py-3 border-b border-[#30363d] bg-[#0d1117]">
+        <span id="lightbox-caption" class="text-xs sm:text-sm font-semibold text-slate-200 font-mono">Figure Preview</span>
+        <div class="flex items-center gap-2">
+          <a id="lightbox-download" href="#" download="webcode-figure.png"
+            class="px-3 py-1 rounded-md text-xs font-semibold bg-emerald-500 text-slate-950 hover:bg-emerald-400 transition">
+            Download PNG
+          </a>
+          <button id="lightbox-close-btn" type="button"
+            class="px-2.5 py-1 rounded-md text-xs text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 border border-slate-700 transition">
+            Close (Esc)
+          </button>
+        </div>
+      </div>
+      <div class="p-4 flex items-center justify-center bg-[#0d1117]/60 max-h-[80vh] overflow-auto">
+        <img id="lightbox-image" src="" alt="Zoomed Visual Output" class="max-w-full max-h-[75vh] object-contain rounded" />
+      </div>
+    </div>
+  </div>
+
+  <!-- Application Scripts -->
+  <script src="js/templates.js"></script>
+  <script src="js/visual-engine.js"></script>
+  <script src="js/pyodide-manager.js"></script>
+  <script src="js/package-manager.js"></script>
+  <script src="js/editor.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

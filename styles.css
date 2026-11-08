@@ -1,0 +1,178 @@
+/* webcode — Custom Theme & Editor Styling */
+:root {
+  --bg-primary: #0d1117;
+  --bg-secondary: #161b22;
+  --bg-tertiary: #1c2128;
+  --border-color: #30363d;
+  --accent-green: #10b981;
+  --accent-green-hover: #059669;
+  --text-primary: #e6edf3;
+  --text-secondary: #8b949e;
+  --danger: #f85149;
+  --warning: #d29922;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+code, pre, .font-mono {
+  font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', Consolas, monospace;
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #0d1117;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #30363d;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #484f58;
+}
+
+/* CodeMirror Dark Theme Overrides for webcode (#0d1117) */
+.CodeMirror {
+  height: 100% !important;
+  width: 100%;
+  background-color: #0d1117 !important;
+  color: #e6edf3 !important;
+  font-family: 'JetBrains Mono', 'Fira Code', Consolas, monospace !important;
+  font-size: 14px;
+  line-height: 1.6;
+  padding: 8px 0;
+}
+
+.CodeMirror-gutters {
+  background-color: #0d1117 !important;
+  border-right: 1px solid #21262d !important;
+  padding-right: 6px;
+}
+
+.CodeMirror-linenumber {
+  color: #484f58 !important;
+  padding: 0 8px 0 12px !important;
+  font-size: 12px;
+}
+
+.CodeMirror-cursor {
+  border-left: 2px solid #10b981 !important;
+}
+
+.CodeMirror-selected {
+  background: rgba(16, 185, 129, 0.18) !important;
+}
+
+.CodeMirror-focused .CodeMirror-selected {
+  background: rgba(16, 185, 129, 0.24) !important;
+}
+
+.CodeMirror-activeline-background {
+  background: rgba(110, 118, 129, 0.1) !important;
+}
+
+.CodeMirror-matchingbracket {
+  color: #10b981 !important;
+  background-color: rgba(16, 185, 129, 0.15);
+  font-weight: bold;
+  text-decoration: none !important;
+  border-bottom: 1px solid #10b981;
+}
+
+/* Syntax Highlighting Colors (GitHub Dark + Emerald Accents) */
+.cm-s-webcode .cm-keyword { color: #ff7b72; font-weight: 500; }
+.cm-s-webcode .cm-builtin { color: #ffa657; }
+.cm-s-webcode .cm-def { color: #d2a8ff; }
+.cm-s-webcode .cm-variable { color: #e6edf3; }
+.cm-s-webcode .cm-variable-2 { color: #79c0ff; }
+.cm-s-webcode .cm-variable-3, .cm-s-webcode .cm-type { color: #ffa657; }
+.cm-s-webcode .cm-property { color: #79c0ff; }
+.cm-s-webcode .cm-operator { color: #ff7b72; }
+.cm-s-webcode .cm-comment { color: #8b949e; font-style: italic; }
+.cm-s-webcode .cm-string { color: #a5d6ff; }
+.cm-s-webcode .cm-string-2 { color: #a5d6ff; }
+.cm-s-webcode .cm-number { color: #34d399; }
+.cm-s-webcode .cm-meta { color: #d2a8ff; }
+.cm-s-webcode .cm-qualifier { color: #79c0ff; }
+.cm-s-webcode .cm-error { color: #f85149; text-decoration: wavy underline #f85149; }
+
+/* Terminal Output Streams */
+.console-line {
+  white-space: pre-wrap;
+  word-break: break-word;
+  line-height: 1.5;
+  font-size: 13px;
+}
+
+.console-stdout {
+  color: #e6edf3;
+}
+
+.console-stderr {
+  color: #f85149;
+  background: rgba(248, 81, 73, 0.08);
+  border-left: 3px solid #f85149;
+  padding: 6px 10px;
+  margin: 4px 0;
+  border-radius: 0 6px 6px 0;
+}
+
+.console-system {
+  color: #10b981;
+}
+
+.console-info {
+  color: #58a6ff;
+}
+
+/* Mobile Quick Toolbar Horizontal Scroll */
+.mobile-key-bar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.mobile-key-bar::-webkit-scrollbar {
+  display: none;
+}
+
+/* Visual Output Card Hover & Transitions */
+.visual-card {
+  transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.visual-card:hover {
+  border-color: rgba(16, 185, 129, 0.5);
+  box-shadow: 0 8px 24px -4px rgba(0, 0, 0, 0.5);
+}
+
+/* Drag and drop active state */
+.dropzone-active {
+  border-color: #10b981 !important;
+  background-color: rgba(16, 185, 129, 0.1) !important;
+}
+
+/* Pulse animation for status badge */
+@keyframes pulse-ring {
+  0% { transform: scale(0.95); opacity: 0.9; }
+  50% { transform: scale(1.15); opacity: 0.5; }
+  100% { transform: scale(0.95); opacity: 0.9; }
+}
+
+.status-pulse {
+  animation: pulse-ring 1.6s infinite ease-in-out;
+}
